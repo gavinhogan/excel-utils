@@ -5,20 +5,55 @@
  * For more details take a look at the Groovy Quickstart chapter in the Gradle
  * User Manual available at https://docs.gradle.org/6.1.1/userguide/tutorial_groovy_projects.html
  */
-
 plugins {
     // Apply the groovy plugin to add support for Groovy
+    id 'java'
     id 'groovy'
     id 'idea'
     // Apply the application plugin to add support for building a CLI application.
     id 'application'
     id "com.github.johnrengelman.shadow" version "5.2.0"
+    id 'com.jfrog.bintray' version '1.8.5'
+    id 'maven-publish'
 }
 
 repositories {
     // Use jcenter for resolving dependencies.
     // You can declare any Maven/Ivy/file repository here.
     jcenter()
+}
+
+version = '0.0.2'
+
+bintray {
+    user = System.getenv('bintrayUsername')
+    key = System.getenv('bintrayApiKey')
+    pkg {
+        repo = 'com.gavinhogan'
+        name = 'excel-utils'
+        userOrg = 'gavinhogan'
+        licenses = ['Apache-2.0']
+        vcsUrl = 'https://github.com/gavinhogan/excel-utils'
+        version {
+            name = "${project.version}-Beta"
+            desc = 'Initial Beta version'
+            released  = new Date()
+
+        }
+    }
+    publications = ['MyPublication']
+
+}
+
+publishing {
+    publications {
+        MyPublication(MavenPublication) {
+            from components.java
+            groupId 'com.gavinhogan'
+            artifactId 'excel-utils'
+            version project.version
+        }
+    }
 }
 
 dependencies {
