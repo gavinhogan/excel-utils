@@ -17,7 +17,7 @@ jobs:
         with:
         arguments: shadowJar
       - name: Upload to BinTray
-        env:
-          bintrayUser: ${{ secrets.bintrayUser }}
-          bintrayApiKey: ${{ secrets.bintrayApiKey }}
+          env:
+            bintrayUser: ${{ secrets.bintrayUser }}
+            bintrayApiKey: ${{ secrets.bintrayApiKey }}
           run: ./gradlew shadowJar
