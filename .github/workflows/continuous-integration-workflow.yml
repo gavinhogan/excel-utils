@@ -14,10 +14,8 @@ jobs:
         with:
           java-version: 11
       - uses: eskatos/gradle-command-action@v1
+        env:
+          bintrayUser: ${{ secrets.bintrayUser }}
+          bintrayApiKey: ${{ secrets.bintrayApiKey }}
         with:
         arguments: shadowJar
-      - name: Upload to BinTray
-          env:
-            bintrayUser: ${{ secrets.bintrayUser }}
-            bintrayApiKey: ${{ secrets.bintrayApiKey }}
-          run: ./gradlew shadowJar
