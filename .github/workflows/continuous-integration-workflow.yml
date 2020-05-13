@@ -18,4 +18,4 @@ jobs:
           bintrayUser: ${{ secrets.bintrayUser }}
           bintrayApiKey: ${{ secrets.bintrayApiKey }}
         with:
-        arguments: shadowJar
+          arguments: shadowJar
