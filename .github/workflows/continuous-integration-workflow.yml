@@ -1,20 +1,14 @@
-name: Build The Library
-# This workflow is triggered on pushes to the repository.
-on: [push]
-
+# .github/workflows/gradle-build-pr.yml
+name: Run Gradle on PRs
+on: pull_request
 jobs:
-  build:
-    # Job name is Greeting
-    name: Build
-    # This job runs on Linux
+  gradle:
     runs-on: ubuntu-latest
     steps:
-      # This step uses GitHub's hello-world-javascript-action: https://github.com/actions/hello-world-javascript-action
-      - name: Hello world
-        uses: actions/hello-world-javascript-action@v1
+      - uses: actions/checkout@v1
+      - uses: actions/setup-java@v1
         with:
-          who-to-greet: 'Mona the Octocat'
-        id: hello
-      # This step prints an output (time) from the previous step's action.
-      - name: Echo the greeting's time
-        run: echo 'The time was ${{ steps.hello.outputs.time }}.'
+          java-version: 11
+      - uses: eskatos/gradle-command-action@v1
+        with:
+          arguments: shadowJar
