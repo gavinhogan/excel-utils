@@ -23,7 +23,7 @@ repositories {
     jcenter()
 }
 
-version = '0.0.2'
+version = '0.0.3'
 
 bintray {
     user = System.getenv('bintrayUsername')
@@ -49,6 +49,8 @@ publishing {
     publications {
         MyPublication(MavenPublication) {
             from components.java
+            artifact sourcesJar
+            artifact javadocJar
             groupId 'com.gavinhogan'
             artifactId 'excel-utils'
             version project.version
