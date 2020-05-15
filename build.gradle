@@ -23,7 +23,7 @@ repositories {
     jcenter()
 }
 
-version = '0.0.3'
+version = '0.0.4'
 
 bintray {
     user = System.getenv('bintrayUsername')
@@ -45,18 +45,36 @@ bintray {
 
 }
 
+task sourcesJar(type: Jar, dependsOn: classes){
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc){
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+artifacts{
+    archives sourcesJar
+    archives javadocJar
+    archives shadowJar
+}
+
 publishing {
     publications {
         MyPublication(MavenPublication) {
             from components.java
             artifact sourcesJar
             artifact javadocJar
+            artifact shadowJar
             groupId 'com.gavinhogan'
             artifactId 'excel-utils'
             version project.version
         }
     }
 }
+
 
 dependencies {
     def picocliVersion = "4.2.0"

@@ -4,8 +4,10 @@ import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.commons.lang3.StringUtils
 import org.apache.commons.lang3.math.NumberUtils
+import org.apache.poi.ss.usermodel.Cell
 import org.apache.poi.ss.usermodel.WorkbookFactory
 import org.apache.poi.ss.util.CellReference
+import org.apache.poi.xssf.usermodel.XSSFRow
 import org.apache.poi.xssf.usermodel.XSSFSheet
 import org.apache.poi.xssf.usermodel.XSSFTable
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
@@ -20,12 +22,15 @@ class JSONArraytoExcelTableUtility {
 
     int tableWidth = 0
     int rowInsertionPoint = 0
-    Set<String> headerLabels = []
+    List<String> headerLabels = []
     String topCorner = "A1"
     String bottomCorner = topCorner
 
     InputStream jsonInputStream
     OutputStream excelOutputStream
+
+    List<String> templateHeaderLabels = []
+    List<String> humanizedHeaderLabels = []
 
     void addRow(Map<String, Object> data,  XSSFSheet sheet, CTTable cttable){
         rowInsertionPoint++
@@ -78,7 +83,7 @@ class JSONArraytoExcelTableUtility {
             while(rowIt.hasNext()){
                 def row = rowIt.next()
                 def cell = row.getCell(columnIndex)
-                isNumber = isNumber && (cell==null || NumberUtils.isCreatable(cell.stringCellValue))
+                isNumber = isNumber && (cell==null || isNumberOrCurrency(cell))
             }
             if(isNumber){
                 rowIt = sheet.rowIterator()
@@ -93,6 +98,11 @@ class JSONArraytoExcelTableUtility {
                 }
             }
         }
+    }
+
+    boolean isNumberOrCurrency(Cell cell) {
+        String value = cell.stringCellValue
+        NumberUtils.isCreatable(value) //|| (value.startsWith('$') && NumberUtils.isCreatable(value?.substring(1)))
     }
 
     void humanizeHeaders(XSSFSheet sheet){
@@ -111,6 +121,7 @@ class JSONArraytoExcelTableUtility {
                 headerName =  ( StringUtils.splitByCharacterTypeCamelCase(cellVal).collect{StringUtils.capitalize(it)}.join(" ").trim() )
             }
             //println "Humanized ${cellVal} to >$headerName<"
+            humanizedHeaderLabels << headerName
             cell.setCellValue( headerName )
         }
     }
@@ -130,20 +141,10 @@ class JSONArraytoExcelTableUtility {
             addRow(it, sheet, null)
         }
         humanizeHeaders(sheet)
-
+        sortColumns(sheet)
         sniffDataTypes(sheet)
         autoWiden(sheet)
         decorateAsTable(sheet)
-        /*workbook.sheetIterator().each { XSSFSheet it->
-            //it.setForceFormulaRecalculation(true)
-
-            it.pivotTables.each {pivot->
-                pivot.pivotCacheDefinition = new XSSFPivotCacheDefinition()
-                pivot.pivotCacheDefinition.CTPivotCacheDefinition.refreshOnLoad
-            }
-
-        }*/
-        //workbook.forceFormulaRecalculation = true
         writeWorkBookToFile(workbook)
     }
 
@@ -160,7 +161,9 @@ class JSONArraytoExcelTableUtility {
         }
         //Remove Sheet1
         if (workbook.getSheet("Sheet1")) {
+           templateHeaderLabels = workbook.getSheet("Sheet1").getRow(0).cellIterator().collect {it.stringCellValue}
             workbook.removeSheetAt(workbook.getSheetIndex(workbook.getSheet("Sheet1")))
+
         }
         return workbook
     }
@@ -200,5 +203,71 @@ class JSONArraytoExcelTableUtility {
 
     static void main(String[] args) {
         new JSONArraytoExcelTableUtility(jsonInputStream: new FileInputStream("repos.json"), excelOutputStream: new FileOutputStream("new-repos.xlsx")).convert()
+    }
+
+    void sortColumns(XSSFSheet sheet) {
+        def headersToMove = templateHeaderLabels.findAll {humanizedHeaderLabels.contains(it)}
+        def moveCount = headersToMove.size()
+        //println templateHeaderLabels
+        //println humanizedHeaderLabels
+
+        //println "We need to move $moveCount columns"
+        sheet.rowIterator().each{row ->
+            //Create the new cells
+            moveCount.times{i->
+                def c = row.createCell(headerLabels.size()+i);
+                c.setCellValue("")
+            }
+            //Move everything over
+            for(int i=headerLabels.size()-1; i>=0; i--){
+                row.getCell(i+moveCount).setCellValue(
+                        row.getCell(i).getStringCellValue()
+                )
+            }
+            //Put the values at the front (left) of the range
+            headersToMove.eachWithIndex{ String label, int i ->
+                row.getCell(i).setCellValue(
+                        row.getCell(humanizedHeaderLabels.indexOf(label)+moveCount).getStringCellValue()
+                )
+            }
+
+
+
+
+        }
+        headersToMove.eachWithIndex {headerLabel, loopIndex->
+            //The index changes on each loop as we are removing columns as we go.
+
+            List<String> currentColumnLabels = sheet.getRow(0).cellIterator().collect {it.stringCellValue}
+            def candidateColumnLabels = currentColumnLabels.subList(moveCount, currentColumnLabels.size())
+
+            int columnIndexToRemove = candidateColumnLabels.indexOf(headerLabel) + moveCount
+            //print "Testing $candidateColumnLabels"
+            //println ".  Removing [$columnIndexToRemove] ${sheet.getRow(0).getCell(columnIndexToRemove).stringCellValue} "
+            deleteColumnAndShiftLeft(sheet, columnIndexToRemove)
+        }
+        def headers = (sheet.getRow(0).cellIterator().collect {it.stringCellValue} as Set)
+
+        println humanizedHeaderLabels.findAll{!headers.contains(it)}
+
+    }
+
+    void deleteColumnAndShiftLeft(XSSFSheet sheet, int colIndex){
+        def lastCell
+        sheet.rowIterator().each { row->
+            def cells = row.cellIterator().collect {it}
+            cells.eachWithIndex { Cell entry, int i ->
+                if(i>=colIndex){
+
+                    Cell nextCell = row.getCell(i+1)
+                    entry.setCellValue(nextCell?.stringCellValue)
+                    lastCell = entry
+                }
+
+            }
+            //Kill The Cell
+            row.removeCell(lastCell)
+        }
+
     }
 }
